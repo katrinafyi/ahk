@@ -68,10 +68,10 @@ if ErrorLevel {
 }
 SendInput, {Right}
 words := StrSplit(Trim(clipboard), A_Space)
-c := words[words.MaxIndex()]
+c := Trim(words[words.MaxIndex()], " `r`n`t")
 n := StrLen(c)
 if (n > 0) {
-  SendInput, {Backspace %n%}\begin{{}%c%{}}{Enter}{Enter}\end{{}%c%{}}{Home}{Up}
+  SendInput, +{Left %n%}\begin{{}%c%{}}{Enter}{Enter}\end{{}%c%{}}{Home}{Up}
 }
 return
 
