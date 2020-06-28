@@ -67,7 +67,10 @@ return
 Tab::
 clipboard := ""
 SendInput, +{END}^c
-ClipWait
+ClipWait, 1
+if ErrorLevel {
+return
+}
 SendInput, {LEFT}
 c := clipboard
 M := StrLen(c) + 10
