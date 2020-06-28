@@ -1,108 +1,179 @@
 SetTitleMatchMode, 2
 
-#IfWinActive  - Typora
+; restrict to Typora windows.
+#IfWinActive ahk_exe Typora.exe
 
-F1::Suspend
+;F1::Reload
 
+; used to toggle all hotkeys
+; F1::Suspend
+
+; fire hotstrings even when preceding character is non-space.
+#Hotstring ?
+
+; creates new math environment with a \begin{aligned}
 ::$$$::
 SendInput, $${Enter}
 Sleep, 100
 SendInput, \begin{{}aligned{}}{Enter}\end{{}aligned{}}{Home}{Enter}{Up}
 return
 
+; inserts \begin{aligned} and matching end tag
 ::\bal::
 SendInput, \begin{{}aligned{}}{Enter}\end{{}aligned{}}{Home}{Enter}{Up}
 return
 
+; inserts \begin{cases} and matching end tag
 ::\cases::
 SendInput, \begin{{}cases{}}{Enter}\end{{}cases{}}{Home}{Enter}{Up}
 return
 
+; inserts \begin{bmatrix} and matching end tag
 ::\bmat::
 SendInput, \begin{{}bmatrix{}}{Enter}\end{{}bmatrix{}}{Home}{Enter}{Up}
 return
 
+; inserts {}{} and places cursor inside first argument
 ::\2a::
-SendInput, {{}{}}{{}{}}{Left}{Left}{Left}
+SendInput, {{}{}}{{}{}}{Left 3}
 return
 
+; inserts \boldsymbol{}
 ::\bm::
 SendInput, \boldsymbol{{}{}}{Left}
 return
 
+; inserts \hat{}
 ::\ha::
 SendInput, \hat{{}{}}{Left}
 return
 
+; inserts \operatorname*{}
 ::\on::
-SendInput, \operatorname{{}{}}{Left}
+SendInput, \operatorname*{{}{}}{Left}
 return
 
+; inserts \frac{}{}
 ::\fr::
 SendInput, \frac {{}{}}{{}{}}{Left 3}
 return
 
-::\res::
-SendInput, \underset{{}res{}}{Left}{Left}{Left}{Left}{Left}{{}{}}{Left}
-return
-
-::\lr::
-SendInput, {Left}{Left}\left{Right}\right{Left}{Left}{Left}{Left}{Left}{Left}
-return
-
-::\lr2::
-SendInput, {Left}{Left}\left\{Right}\right\{Left}{Left}{Left}{Left}{Left}{Left}{Left}
-return
-
+; takes the word immediately left of the \beg and wraps it in \begin and \end.
 ::\beg::
 clipboard := ""
-SendInput, ^+{Left}^c
-ClipWait
-c := Trim(clipboard)
-if (StrLen(c) > 0) {
-SendInput, \begin{{}%c%{}}{Enter}{Enter}\end{{}%c%{}}{Home}{Up}
+SendInput, +{Home}^c
+ClipWait, 1
+if ErrorLevel {
+  return
+}
+SendInput, {Right}
+words := StrSplit(Trim(clipboard), A_Space)
+c := words[words.MaxIndex()]
+n := StrLen(c)
+if (n > 0) {
+  SendInput, {Backspace %n%}\begin{{}%c%{}}{Enter}{Enter}\end{{}%c%{}}{Home}{Up}
 }
 return
 
+; wraps from the left { to \paren in parentheses
+::\paren::
+clipboard := ""
+SendInput, +{Home}^c
+ClipWait, 1
+if ErrorLevel {
+  return
+}
+SendInput, {Right}
+t := clipboard
+tl := StrLen(t)
+l := InStr(t, "{", false, 0)
+r := InStr(t, "}", false, 0)
+while (r > l) {
+  ;MsgBox, L %l% R %r%
+  r := InStr(t, "}", false, -(tl - l + 1))
+  l := InStr(t, "{", false, -(tl - l + 1))
+}
+;MsgBox, L %l% R %r%
+lefts := StrLen(t) - l
+; use clipboard to avoid Typora automatically inserting ()
+clipboard := "\left(" . SubStr(t, l+1) . "\right)"
+SendInput, +{Left %lefts%}^v{Delete}
+return
+
+; inserts \left and \right matching to the character immediately left of \lr
+::\lr::
+clipboard := ""
+SendInput, +{Home}^c
+ClipWait, 1
+if ErrorLevel {
+  return
+}
+SendInput, {Right}
+t := clipboard
+r := SubStr(t, 0, 1)
+l := ""
+e := ""
+if (r == ")") {
+  l := "("
+} else if (r == "}") {
+  l := "{"
+  e := "\"
+} else if (r == "]") {
+  l := "["
+}
+if (l == "") {
+  return ; last character not a closing bracket
+}
+l := InStr(t, l, false, -1)
+if (l == 0) {
+  return ; opening bracket not found
+}
+lefts := StrLen(t) - l + 1 ; move in front of open bracket
+rights := lefts - 1 ; move in front of right bracket
+lefts_again := 6 + StrLen(e) ; move to immediately before \right
+SendInput, {Left %lefts%}\left%e%{Right %rights%}\right%e%{Left %lefts_again%}
+return
+
+; smart tab. moves after next { or (, or failing that moves after next ) or }
 Tab::
 clipboard := ""
 SendInput, +{END}^c
 ClipWait, 1
 if ErrorLevel {
-return
+  return
 }
 SendInput, {LEFT}
 c := clipboard
 M := StrLen(c) + 10
 if (M == 0) {
-SendInput {Right}
-return
+  SendInput {Right}
+  return
 }
 n1 := InStr(c, "{")
 n2 := InStr(c, "(")
 if (n1 == 0) {
-n1 := M
+  n1 := M
 }
 if (n2 == 0) {
-n2 := M
+  n2 := M
 }
 n := Min(n1, n2)
 if (n == M) {
-n1 := InStr(c, "}")
-n2 := InStr(c, ")")
-if (n1 == 0) {
-n1 := M
-}
-if (n2 == 0) {
-n2 := M
-}
-n := Min(n1, n2)
+  n1 := InStr(c, "}")
+  n2 := InStr(c, ")")
+  if (n1 == 0) {
+    n1 := M
+  }
+  if (n2 == 0) {
+    n2 := M
+  }
+  n := Min(n1, n2)
 }
 ; MsgBox % "c >" . c . "< n: " . n
 if (n != M) {
-SendInput {RIGHT %n%}
+  SendInput {RIGHT %n%}
 } else {
-SendInput {End}
+  SendInput {End}
 }
 ; MsgBox % c
 return
