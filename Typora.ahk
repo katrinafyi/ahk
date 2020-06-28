@@ -11,6 +11,12 @@ SetTitleMatchMode, 2
 ; fire hotstrings even when preceding character is non-space.
 #Hotstring ?
 
+; inserts align marker and line break
+:*:==::
+SendInput, %A_Space%&=  \\{Left 3}
+return
+
+
 ; creates new math environment with a \begin{aligned}
 ::$$$::
 SendInput, $${Enter}
@@ -58,6 +64,11 @@ return
 SendInput, \frac {{}{}}{{}{}}{Left 3}
 return
 
+; inserts Res operator with subscript
+::\res::
+SendInput, \operatorname*{{}Res{}}_{{}z={}}{Left}
+return
+
 ; takes the word immediately left of the \beg and wraps it in \begin and \end.
 ::\beg::
 clipboard := ""
@@ -75,8 +86,16 @@ if (n > 0) {
 }
 return
 
+EscapeBackslash(c) {
+  if (c == "{" || c == "}") {
+    return "\" . c
+  } else {
+    return c
+  }
+}
+
 ; wraps from the left { to \paren in parentheses
-::\paren::
+::\wr::
 clipboard := ""
 SendInput, +{Home}^c
 ClipWait, 1
@@ -85,7 +104,12 @@ if ErrorLevel {
 }
 SendInput, {Right}
 t := clipboard
+; limit to left $ in case we are in an inline equation
+dollar := InStr(t, "$", false, 0)
+t := SubStr(t, dollar + 1)
 tl := StrLen(t)
+d1 := SubStr(t, tl-1, 1)
+d2 := SubStr(t, tl, 1)
 l := InStr(t, "{", false, 0)
 r := InStr(t, "}", false, 0)
 while (r > l) {
@@ -96,42 +120,35 @@ while (r > l) {
 ;MsgBox, L %l% R %r%
 lefts := StrLen(t) - l
 ; use clipboard to avoid Typora automatically inserting ()
-clipboard := "\left(" . SubStr(t, l+1) . "\right)"
-SendInput, +{Left %lefts%}^v{Delete}
+clipboard := "\left" . EscapeBackslash(d1) . SubStr(t, l+1, -2) . "\right" . EscapeBackslash(d2)
+SendInput, +{Left %lefts%}^v
 return
 
-; inserts \left and \right matching to the character immediately left of \lr
+; inserts \left and \right on the two preceding characters, escaping braces
 ::\lr::
 clipboard := ""
-SendInput, +{Home}^c
+SendInput, +{Left 2}^c
 ClipWait, 1
 if ErrorLevel {
   return
 }
 SendInput, {Right}
-t := clipboard
-r := SubStr(t, 0, 1)
-l := ""
-e := ""
-if (r == ")") {
-  l := "("
-} else if (r == "}") {
-  l := "{"
-  e := "\"
-} else if (r == "]") {
-  l := "["
+t := Trim(clipboard)
+if (StrLen(t) != 2) {
+  return
 }
-if (l == "") {
-  return ; last character not a closing bracket
+l := SubStr(t, 1, 1)
+r := SubStr(t, 2, 1)
+e1 := ""
+e2 := ""
+if (l == "{") {
+  e1 := "\"
 }
-l := InStr(t, l, false, -1)
-if (l == 0) {
-  return ; opening bracket not found
+if (r == "}") {
+  e2 := "\"
 }
-lefts := StrLen(t) - l + 1 ; move in front of open bracket
-rights := lefts - 1 ; move in front of right bracket
-lefts_again := 6 + StrLen(e) ; move to immediately before \right
-SendInput, {Left %lefts%}\left%e%{Right %rights%}\right%e%{Left %lefts_again%}
+lefts := 6 + StrLen(e2)
+SendInput, {Left 2}\left%e1%{Right}\right%e2%{Left %lefts%}
 return
 
 ; smart tab. moves after next { or (, or failing that moves after next ) or }
