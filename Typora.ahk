@@ -3,7 +3,7 @@ SetTitleMatchMode, 2
 ; restrict to Typora windows.
 #IfWinActive ahk_exe Typora.exe
 
-;F1::Reload
+^F1::Reload
 
 ; used to toggle all hotkeys
 ; F1::Suspend
@@ -12,8 +12,8 @@ SetTitleMatchMode, 2
 #Hotstring ?
 
 ; inserts align marker and line break
-:*:==::
-SendInput, %A_Space%&=  \\{Left 3}
+::==::
+SendInput, &=%A_Space%
 return
 
 
@@ -71,14 +71,17 @@ return
 
 ; takes the word immediately left of the \beg and wraps it in \begin and \end.
 ::\beg::
+old := ClipboardAll
 clipboard := ""
 SendInput, +{Home}^c
 ClipWait, 1
 if ErrorLevel {
+  clipboard := old
   return
 }
 SendInput, {Right}
 words := StrSplit(Trim(clipboard), A_Space)
+clipboard := old
 c := Trim(words[words.MaxIndex()], " `r`n`t")
 n := StrLen(c)
 if (n > 0) {
@@ -96,10 +99,12 @@ EscapeBackslash(c) {
 
 ; wraps from the left { to \paren in parentheses
 ::\wr::
+old := ClipboardAll
 clipboard := ""
 SendInput, +{Home}^c
 ClipWait, 1
 if ErrorLevel {
+  clipboard := old
   return
 }
 SendInput, {Right}
@@ -120,20 +125,26 @@ while (r > l) {
 ;MsgBox, L %l% R %r%
 lefts := StrLen(t) - l
 ; use clipboard to avoid Typora automatically inserting ()
+Critical ; prevent other threads from interrupting our clipboard restore
 clipboard := "\left" . EscapeBackslash(d1) . SubStr(t, l+1, -2) . "\right" . EscapeBackslash(d2)
 SendInput, +{Left %lefts%}^v
+Sleep, 400
+clipboard := old
 return
 
 ; inserts \left and \right on the two preceding characters, escaping braces
 ::\lr::
+old := ClipboardAll
 clipboard := ""
 SendInput, +{Left 2}^c
 ClipWait, 1
 if ErrorLevel {
+  clipboard := old
   return
 }
 SendInput, {Right}
 t := Trim(clipboard)
+clipboard := old
 if (StrLen(t) != 2) {
   return
 }
@@ -147,20 +158,23 @@ if (l == "{") {
 if (r == "}") {
   e2 := "\"
 }
-lefts := 6 + StrLen(e2)
-SendInput, {Left 2}\left%e1%{Right}\right%e2%{Left %lefts%}
+lefts := 6 + StrLen(e2) + 1
+SendInput, {Left 2}\left%e1%{Right}  \right%e2%{Left %lefts%}
 return
 
 ; smart tab. moves after next { or (, or failing that moves after next ) or }
 Tab::
+old := ClipboardAll
 clipboard := ""
 SendInput, +{END}^c
 ClipWait, 1
 if ErrorLevel {
+  clipboard := old
   return
 }
 SendInput, {LEFT}
 c := clipboard
+clipboard := old
 M := StrLen(c) + 10
 if (M == 0) {
   SendInput {Right}
