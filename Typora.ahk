@@ -1,8 +1,9 @@
-SetTitleMatchMode, 2
-
+#Warn all
+#NoEnv
 ; restrict to Typora windows.
 #IfWinActive ahk_exe Typora.exe
 
+; reload script. used for development
 ^F1::Reload
 
 ; used to toggle all hotkeys
@@ -57,6 +58,21 @@ return
 ; inserts \operatorname*{}
 ::\on::
 SendInput, \operatorname*{{}{}}{Left}
+return
+
+; inserts \text{}
+::\t::
+SendInput, \text{{}{}}{Left}
+return
+
+; inserts \textit{}
+::\ti::
+SendInput, \textit{{}{}}{Left}
+return
+
+; inserts \textsf{}
+::\ts::
+SendInput, \textsf{{}{}}{Left}
 return
 
 ; inserts \frac{}{}
@@ -163,20 +179,22 @@ SendInput, {Left 2}\left%e1%{Right}  \right%e2%{Left %lefts%}
 return
 
 ; smart tab. moves after next { or (, or failing that moves after next ) or }
-Tab::
+$Tab::
 old := ClipboardAll
 clipboard := ""
 SendInput, +{END}^c
-ClipWait, 1
+;Critical
+ClipWait, 0.5
 if ErrorLevel {
   clipboard := old
+  ;SendInput, {Tab}
   return
 }
 SendInput, {LEFT}
 c := clipboard
 clipboard := old
 M := StrLen(c) + 10
-if (M == 0) {
+if (M == 10) {
   SendInput {Right}
   return
 }
